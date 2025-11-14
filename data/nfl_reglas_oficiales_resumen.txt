@@ -1,0 +1,11 @@
+Un partido de la NFL se divide en cuatro cuartos de 15 minutos. El reloj se detiene en situaciones como pases incompletos, jugadores que salen del campo y algunos castigos.
+
+La ofensiva dispone de cuatro oportunidades, llamadas downs, para avanzar al menos 10 yardas. Si consigue avanzar esas 10 yardas o más, obtiene un nuevo primero y diez. Si no lo logra, normalmente el balón pasa al equipo contrario.
+
+Las formas principales de anotar son:
+- Touchdown: 6 puntos.
+- Gol de campo (field goal): 3 puntos.
+- Safety: 2 puntos.
+- Punto extra o conversión después del touchdown.
+
+Entre las faltas más comunes están: offside, salida en falso, holding e interferencia de pase. Cada una conlleva una penalización en yardas y, a veces, en pérdida de down.

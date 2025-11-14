@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chatbot NFL Rules</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Hoja de estilos -->
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="app-wrapper">
+      <div class="chat-container">
+        <!-- Encabezado -->
+        <header class="chat-header">
+          <div class="chat-title">
+            <h1>NFL Rules Chatbot</h1>
+            <p>Pregúntame sobre reglas, equipos y curiosidades de la NFL</p>
+          </div>
+          <div class="chat-legend">
+            Creado por Olivier González Luis Gabriel y Peña Olmos Ulises
+          </div>
+        </header>
+
+        <!-- Ventana de mensajes -->
+        <main class="chat-main">
+          <div id="chat-messages" class="chat-messages">
+            <!-- Los mensajes se insertan dinámicamente desde app.js -->
+          </div>
+        </main>
+
+        <!-- Starters / sugerencias -->
+        <section class="starters">
+          <p>Empieza con una de estas preguntas:</p>
+          <div class="starters-grid">
+            <button
+              class="starter-btn"
+              data-prompt="¿Cómo se anotan puntos en la NFL?"
+            >
+              ¿Cómo se anotan puntos?
+            </button>
+            <button
+              class="starter-btn"
+              data-prompt="¿Qué es el castigo de holding en la NFL?"
+            >
+              ¿Qué es holding?
+            </button>
+            <button
+              class="starter-btn"
+              data-prompt="Explícame qué es un primero y diez."
+            >
+              ¿Qué es primero y diez?
+            </button>
+            <button
+              class="starter-btn"
+              data-prompt="¿Qué es la interferencia de pase en la NFL?"
+            >
+              Interferencia de pase
+            </button>
+          </div>
+        </section>
+
+        <!-- Input del usuario -->
+        <footer class="chat-footer">
+          <form id="chat-form" class="chat-form">
+            <input
+              id="chat-input"
+              type="text"
+              autocomplete="off"
+              placeholder="Escribe tu pregunta sobre la NFL o cualquier otro tema..."
+            />
+            <button type="submit" class="send-btn">Enviar</button>
+          </form>
+        </footer>
+      </div>
+    </div>
+
+    <!-- Lógica del chat -->
+    <script src="js/app.js"></script>
+  </body>
+</html>
