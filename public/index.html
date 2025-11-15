@@ -2,34 +2,34 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>Chatbot NFL Rules</title>
+    <title>NFL Rules Chatbot</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Hoja de estilos -->
+    <!-- Hoja de estilos principal -->
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
     <div class="app-wrapper">
       <div class="chat-container">
-        <!-- Encabezado -->
+        <!-- Encabezado del chat -->
         <header class="chat-header">
           <div class="chat-title">
             <h1>NFL Rules Chatbot</h1>
-            <p>Pregúntame sobre reglas, equipos y curiosidades de la NFL</p>
+            <p>Pregúntame sobre reglas, equipos, campeonatos y curiosidades de la NFL</p>
           </div>
           <div class="chat-legend">
             Creado por Olivier González Luis Gabriel y Peña Olmos Ulises
           </div>
         </header>
 
-        <!-- Ventana de mensajes -->
+        <!-- Zona principal: ventana con scroll para mensajes -->
         <main class="chat-main">
           <div id="chat-messages" class="chat-messages">
-            <!-- Los mensajes se insertan dinámicamente desde app.js -->
+            <!-- Los mensajes del usuario y del bot se agregan aquí desde app.js -->
           </div>
         </main>
 
-        <!-- Starters / sugerencias -->
+        <!-- Botones de conversación inicial (starters) -->
         <section class="starters">
           <p>Empieza con una de estas preguntas:</p>
           <div class="starters-grid">
@@ -39,18 +39,21 @@
             >
               ¿Cómo se anotan puntos?
             </button>
+
             <button
               class="starter-btn"
               data-prompt="¿Qué es el castigo de holding en la NFL?"
             >
               ¿Qué es holding?
             </button>
+
             <button
               class="starter-btn"
-              data-prompt="Explícame qué es un primero y diez."
+              data-prompt="Explícame qué es un primero y diez en la NFL."
             >
               ¿Qué es primero y diez?
             </button>
+
             <button
               class="starter-btn"
               data-prompt="¿Qué es la interferencia de pase en la NFL?"
@@ -60,7 +63,7 @@
           </div>
         </section>
 
-        <!-- Input del usuario -->
+        <!-- Zona de input del usuario -->
         <footer class="chat-footer">
           <form id="chat-form" class="chat-form">
             <input
@@ -75,7 +78,7 @@
       </div>
     </div>
 
-    <!-- Lógica del chat -->
+    <!-- Lógica del chat (frontend) -->
     <script src="js/app.js"></script>
   </body>
 </html>
