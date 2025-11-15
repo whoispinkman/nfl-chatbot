@@ -48,18 +48,16 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {string} text - texto del mensaje
    */
   function addMessage(sender, text) {
-    // Crear el contenedor del mensaje
-    const msgDiv = document.createElement('div');
-    msgDiv.classList.add('message', sender === 'user' ? 'user' : 'bot');
+  const msgDiv = document.createElement('div');
+  msgDiv.classList.add('message', sender === 'user' ? 'user' : 'bot');
 
-    // Crear la burbuja
-    const bubble = document.createElement('div');
-    bubble.classList.add('bubble');
-    bubble.textContent = text;
+  const bubble = document.createElement('div');
+  bubble.classList.add('bubble');
+  bubble.textContent = text;
 
-    // Unir y agregar al DOM
-    msgDiv.appendChild(bubble);
-    chatMessages.appendChild(msgDiv);
+  msgDiv.appendChild(bubble);
+  chatMessages.appendChild(msgDiv);
+
 
     // Autoscroll SOLO dentro de la ventana de mensajes
     chatMessages.scrollTop = chatMessages.scrollHeight;
