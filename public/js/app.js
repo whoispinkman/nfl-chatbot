@@ -43,8 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
     msgDiv.appendChild(bubble);
     chatMessages.appendChild(msgDiv);
 
-    // Autoscroll suave hacia el último mensaje
-    bubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    // Autoscroll SOLO dentro del contenedor de mensajes
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
   function sendUserMessage(text) {

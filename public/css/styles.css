@@ -25,13 +25,15 @@ body {
   background-attachment: fixed;
 }
 
-/* Capa oscura encima del fondo para que se lea bien */
+/* Capa oscura encima del fondo
+   IMPORTANTE: align-items:flex-start para que el chat quede arriba
+   y la página pueda hacer scroll si hace falta */
 .app-wrapper {
   min-height: 100vh;
   background: rgba(0, 0, 0, 0.78);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start; /* <- antes estaba center, eso cortaba el contenido */
   padding: 16px;
 }
 
@@ -39,10 +41,16 @@ body {
    Contenedor principal del chat
    ========================= */
 
+/* IMPORTANTE:
+   - max-height:100vh para no exceder la pantalla.
+   - display:flex + flex-direction:column para que
+     el área de mensajes pueda tener scroll interno.
+*/
 .chat-container {
   width: 100%;
   max-width: 900px;
-  height: 90vh;
+  max-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: linear-gradient(
@@ -93,9 +101,8 @@ body {
    Ventana de mensajes
    ========================= */
 
-/* OJO: aquí está el truco para el scroll
-   - display:flex + flex-direction:column
-   - .chat-messages con flex:1 y min-height:0
+/* OJO: chat-main es flex:1 y contiene chat-messages,
+   que tendrá el scroll interno.
 */
 
 .chat-main {
@@ -135,10 +142,15 @@ body {
   opacity: 0.15;
 }
 
+/* Área con scroll de mensajes:
+   - flex:1 y min-height:0 son CLAVE en flexbox para que
+     el overflow funcione bien.
+*/
+
 .chat-messages {
   position: relative;
   flex: 1;
-  min-height: 0; /* clave para que el scroll funcione dentro del flex */
+  min-height: 0; /* <- truco para que pueda hacer scroll interno */
   overflow-y: auto;
   padding-right: 6px;
   display: flex;
@@ -321,7 +333,8 @@ body {
 
 @media (max-width: 700px) {
   .chat-container {
-    height: 95vh;
+    max-height: 100vh;
+    height: 100%;
   }
 
   .chat-header {
