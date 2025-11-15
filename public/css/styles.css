@@ -1,5 +1,5 @@
 /* =========================
-   Estilos generales
+   RESETEO Y CONFIGURACIÓN GENERAL
    ========================= */
 
 *,
@@ -15,20 +15,20 @@ body {
   height: 100%;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+  overflow: hidden; /* ✅ IMPORTANTE: la página completa NO tiene scroll */
 }
 
-/* Fondo con imagen tipo Super Bowl */
+/* Fondo tipo Super Bowl */
 body {
-  background-image: url("../img/superbowl-bg.jpg"); /* cambia el nombre si tu imagen es otra */
+  background-image: url("../img/superbowl-bg.jpg"); /* Ajusta el nombre según tu imagen */
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
 }
 
-/* Capa oscura encima del fondo,
-   la página puede tener scroll si hace falta */
+/* Capa oscura y centrado del recuadro de chat */
 .app-wrapper {
-  min-height: 100vh;
+  height: 100vh; /* ✅ ocupa toda la pantalla */
   width: 100%;
   background: rgba(0, 0, 0, 0.78);
   display: flex;
@@ -38,20 +38,19 @@ body {
 }
 
 /* =========================
-   Contenedor principal del chat (VENTANA)
+   VENTANA DE CHAT (RECUADRO)
    ========================= */
 
 /*
-  Esta es la “ventana de chat”:
-  - Tiene altura fija relativa a la pantalla: 80vh (80% de la ventana)
-  - Máximo 820px para que no sea enorme en pantallas grandes
-  - display:flex para organizar header, mensajes y footer
+  Esta es la "app" de chat:
+  - Altura fija con respecto a la pantalla (90% de la altura visible)
+  - Dentro de esta ventana, SOLO el área de mensajes tendrá scroll.
 */
 .chat-container {
   width: 100%;
   max-width: 900px;
-  height: 80vh;        /* << AQUÍ definimos una altura tipo ventana */
-  max-height: 820px;
+  height: 90vh;        /* ✅ Ventana de chat fija */
+  max-height: 900px;
   display: flex;
   flex-direction: column;
   background: linear-gradient(
@@ -61,12 +60,12 @@ body {
   );
   border-radius: 18px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
-  overflow: hidden; /* todo lo que se salga de la tarjeta se recorta */
+  overflow: hidden; /* recorta lo que se salga de esta tarjeta */
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* =========================
-   Header
+   HEADER
    ========================= */
 
 .chat-header {
@@ -75,7 +74,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex-shrink: 0; /* NO se encoge cuando el espacio es pequeño */
+  flex-shrink: 0; /* ✅ no se encoge al faltar espacio */
 }
 
 .chat-title h1 {
@@ -100,15 +99,15 @@ body {
 }
 
 /* =========================
-   Zona principal (mensajes + fondo)
+   ZONA PRINCIPAL (mensajes)
    ========================= */
 
 /*
-  chat-main ocupa TODO el espacio central (entre header y footer)
-  y dentro de él estará el área con scroll.
+  chat-main ocupa todo el espacio central disponible
+  entre header, starters y footer.
 */
 .chat-main {
-  flex: 1;                 /* ocupa todo el espacio disponible entre header y footer */
+  flex: 1; /* ✅ toma todo el alto disponible entre header y footer */
   padding: 12px 16px;
   background-image: radial-gradient(
       circle at 0 0,
@@ -125,7 +124,7 @@ body {
   flex-direction: column;
 }
 
-/* cuadrícula estilo tablero de jugadas */
+/* cuadrícula estilo tablero de jugadas (decorativo) */
 .chat-main::before {
   content: "";
   position: absolute;
@@ -145,27 +144,25 @@ body {
 }
 
 /* =========================
-   Área de mensajes CON SCROLL
+   ÁREA DE MENSAJES CON SCROLL
    ========================= */
 
 /*
-  AQUÍ está la “ventana” con scroll:
-
+  ESTE ES EL CONTENEDOR QUE TENDRÁ LA BARRA DE SCROLL:
   - flex:1 => usa todo el alto disponible dentro de chat-main
-  - min-height:0 => truco para que flex + overflow funcionen bien
-  - overflow-y:auto => aparece scroll interno cuando hay muchos mensajes
+  - min-height:0 => truco necesario para que funcione overflow en flex
+  - overflow-y: scroll => SIEMPRE muestra la barra vertical
 */
 .chat-messages {
   position: relative;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  padding-right: 6px;
+  overflow-y: scroll; /* ✅ SIEMPRE HAY SCROLL VERTICAL EN ESTA VENTANA */
+  padding-right: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 
-  /* Scrollbar estilo NFL */
   scrollbar-width: thin;
   scrollbar-color: #f15a24 rgba(255, 255, 255, 0.08);
 }
@@ -184,7 +181,7 @@ body {
 }
 
 /* =========================
-   Burbujas de mensajes
+   BURBUJAS DE MENSAJES
    ========================= */
 
 .message {
@@ -227,7 +224,7 @@ body {
 }
 
 /* =========================
-   Sección de starters
+   STARTERS (botones de inicio)
    ========================= */
 
 .starters {
@@ -235,7 +232,7 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(1, 12, 32, 0.95);
-  flex-shrink: 0; /* no se encoge */
+  flex-shrink: 0; /* ✅ no se encoge */
 }
 
 .starters p {
@@ -275,13 +272,13 @@ body {
 }
 
 /* =========================
-   Footer / input del usuario
+   FOOTER / INPUT DEL USUARIO
    ========================= */
 
 .chat-footer {
   padding: 8px 12px 10px;
   background: rgba(3, 14, 35, 0.98);
-  flex-shrink: 0; /* se mantiene visible y no se encoge */
+  flex-shrink: 0; /* ✅ se mantiene visible abajo */
 }
 
 .chat-form {
@@ -338,7 +335,7 @@ body {
 }
 
 /* =========================
-   Responsivo
+   RESPONSIVO
    ========================= */
 
 @media (max-width: 700px) {
@@ -347,7 +344,7 @@ body {
   }
 
   .chat-container {
-    height: 85vh; /* un poco más alta en pantallas pequeñas */
+    height: 92vh; /* un poco más alta en móvil */
   }
 
   .chat-header {
