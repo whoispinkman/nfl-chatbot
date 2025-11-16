@@ -1,15 +1,5 @@
 // server/server.js
-// Chatbot NFL:
-//  - Conoce algunas reglas básicas (rule-based).
-//  - Para cualquier otra cosa, usa SerpAPI para buscar.
-//  - NO menciona que está buscando en internet.
-//  - No usa PDF ni archivos locales ni OpenAI.
-//
-// Flujo:
-//   1) Vacío / insultos / saludos.
-//   2) Si la pregunta coincide con reglas básicas NFL -> responder con texto propio.
-//   3) Si no, buscar con SerpAPI y responder con snippet + fuente (sin decir "según internet").
-//   4) Si SerpAPI no ayuda, fallback NFL o genérico.
+// Backend del chatbot NFL: Express + reglas internas + SerpAPI (solo NFL)
 
 require('dotenv').config();
 
@@ -19,333 +9,441 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ==============================
+// Middleware y archivos estáticos
+// ==============================
 app.use(express.json());
 
-// Servir frontend (public/)
+// Servir la carpeta "public" (index.html, css, js, etc.)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// -------------------- Utilidades y patrones --------------------
-
-function randomItem(arr) {
-  if (!arr || arr.length === 0) return '';
-  const idx = Math.floor(Math.random() * arr.length);
-  return arr[idx];
+// ==============================
+// Utilidades de texto
+// ==============================
+function normalizeText(text) {
+  return (text || '').toString().trim();
 }
 
-// Saludos naturales
+// ==============================
+// Clasificación de tema (NFL / no NFL)
+// ==============================
+const nflKeywords = [
+  'nfl',
+  'fútbol americano',
+  'futbol americano',
+  'super bowl',
+  'superbowl',
+  'touchdown',
+  'field goal',
+  'gol de campo',
+  'safety',
+  'primero y diez',
+  '1ro y 10',
+  'quarterback',
+  'mariscal de campo',
+  'linebacker',
+  'receiver',
+  'wide receiver',
+  'running back',
+  'patriots',
+  'patriotas',
+  'cowboys',
+  'steelers',
+  'packers',
+  'chiefs',
+  'eagles',
+  '49ers',
+  'jets',
+  'giants',
+  'raiders',
+  'broncos',
+  'bills',
+  'ravens',
+  'bengals',
+  'browns',
+  'vikings',
+  'seahawks',
+  'buccaneers',
+  'bucs',
+  // puedes agregar más equipos o palabras relacionadas
+];
+
+function classifyTopic(messageLower) {
+  const text = messageLower.toLowerCase();
+  const hasNFL = nflKeywords.some((kw) => text.includes(kw));
+  return hasNFL ? 'nfl' : 'non-nfl';
+}
+
+// ==============================
+// Detección de saludos e insultos
+// ==============================
 const greetingKeywords = [
   'hola',
-  'holi',
   'holis',
-  'hey',
-  'buen dia',
-  'buenos dias',
+  'holaa',
+  'buenas',
+  'buenos días',
   'buenas tardes',
   'buenas noches',
   'que onda',
   'qué onda',
-  'como estas',
-  'cómo estás',
-  'que tal',
-  'qué tal',
+  'hey',
   'hi',
   'hello'
 ];
 
-const insultPatterns = [/idiota/i, /tonto/i, /est[uú]pido/i, /pendej/i];
-
-const englishHint =
-  /\b(what|how|why|when|who|where|rule|rules|game|player|points|score|touchdown|field goal)\b/i;
-
-const greetingReplies = [
-  '¡Hola! 😊 ¿Qué te gustaría saber de la NFL o del fútbol americano en general?',
-  '¡Qué tal! Puedo ayudarte con dudas de la NFL, reglas, equipos, campeonatos o curiosidades.',
-  '¡Hola! Estoy listo para hablar de fútbol americano. Pregúntame lo que quieras.',
-  '¡Hola! Si quieres, podemos empezar por reglas básicas, equipos o historia de la NFL.'
-];
-
-const offTopicReplies = [
-  'No tengo una respuesta exacta para eso, pero si te interesa la NFL puedo ayudarte con reglas, equipos y datos curiosos.',
-  'Parece un tema interesante, aunque mi especialidad es la NFL. Si quieres, pregúntame algo de fútbol americano.',
-  'No estoy seguro de ese tema, pero si cambias la pregunta hacia la NFL (reglas, equipos, campeonatos) con gusto te ayudo.',
-  'No tengo mucha información de eso, pero sí puedo explicarte conceptos de la NFL como touchdowns, castigos o cómo funciona la temporada.'
-];
-
-const nflFallbackReplies = [
-  'No tengo ese dato específico, pero recuerda que la NFL se organiza en dos conferencias (AFC y NFC), con 32 equipos que compiten por llegar al Super Bowl.',
-  'No tengo una respuesta exacta para eso, pero en la NFL los equipos buscan ganar la temporada regular, clasificar a playoffs y llegar al Super Bowl.',
-  'No tengo información precisa de ese punto, pero si me preguntas por reglas, castigos o equipos de la NFL, puedo explicarte con más detalle.'
-];
-
-// Saludo sí/no
-function isGreeting(message) {
-  const text = message.toLowerCase();
-  return greetingKeywords.some((kw) => text.includes(kw));
+function isGreeting(messageLower) {
+  return greetingKeywords.some((g) => messageLower.includes(g));
 }
 
-// Clasificar si el tema parece NFL o no (para tono del fallback)
-function classifyTopic(message) {
-  const lower = message.toLowerCase();
+const insultPatterns = [
+  /idiota/i,
+  /tonto/i,
+  /estúpido/i,
+  /pendejo/i,
+  /imbécil/i,
+  /menso/i,
+  /no sirves/i
+];
 
-  const nflKeywords = [
-    'nfl',
-    'super bowl',
-    'futbol americano',
-    'fútbol americano',
-    'regla',
-    'reglas',
-    'castigo',
-    'castigos',
-    'equipo',
-    'equipos',
-    'touchdown',
-    'gol de campo',
-    'field goal',
-    'yardas',
-    'mariscal',
-    'quarterback',
-    'qb',
-    'jugador',
-    'jugadores',
-    'temporada',
-    'playoffs',
-    'afc',
-    'nfc',
-    'linea de golpeo',
-    'primero y diez',
-    'primera y diez',
-    '1ero y 10',
-    'holding',
-    'offside',
-    'salida en falso',
-    'interferencia de pase',
-    'coach',
-    'entrenador',
-    'halftime',
-    'medio tiempo'
-  ];
-
-  const isNFL = nflKeywords.some((kw) => lower.includes(kw));
-  return isNFL ? 'nfl' : 'general';
+function containsInsult(messageLower) {
+  return insultPatterns.some((re) => re.test(messageLower));
 }
 
-// -------------------- Reglas básicas NFL (conocimiento propio del bot) --------------------
+// ==============================
+// Reglas internas rápidas sobre NFL
+// ==============================
 
 const quickRules = [
   {
-    id: 'reglas_generales',
-    patterns: [/reglas/i, /normas/i, /reglas basicas/i, /reglas básicas/i],
+    id: 'reglas_basicas',
+    patterns: [
+      /reglas básicas/i,
+      /reglas de la nfl/i,
+      /cómo se juega la nfl/i,
+      /explica la nfl/i
+    ],
     answer:
-      'Te resumo algunas reglas básicas de la NFL:\n\n' +
-      '• El partido se divide en 4 cuartos de 15 minutos.\n' +
-      '• La ofensiva tiene 4 intentos (downs) para avanzar al menos 10 yardas.\n' +
-      '• Si avanzan esas 10 yardas, consiguen un “primero y diez” y tienen otros 4 intentos.\n' +
-      '• El balón cambia de posesión cuando no consiguen el primero y diez, anota el rival o hay una patada de despeje.\n' +
-      '• Hay distintos castigos (holding, offside, interferencia de pase, etc.) que mueven el balón a favor o en contra.'
+      'Un partido de la NFL se juega entre dos equipos de 11 jugadores en el campo. ' +
+      'El objetivo es avanzar el balón por el campo hasta la zona de anotación del rival. ' +
+      'Cada equipo dispone de cuatro intentos (downs) para avanzar al menos 10 yardas; si lo logra, obtiene un nuevo primero y diez. ' +
+      'El partido se divide en cuatro cuartos de 15 minutos, con una pausa más larga en el medio tiempo.'
   },
   {
     id: 'puntos',
-    patterns: [/puntos/i, /anotar/i, /marcan puntos/i],
+    patterns: [
+      /anotar puntos/i,
+      /puntos en la nfl/i,
+      /formas de anotar/i,
+      /cómo se anotan puntos/i,
+      /touchdown/i,
+      /field goal/i,
+      /gol de campo/i,
+      /safety/i
+    ],
     answer:
-      'En la NFL se puede anotar de varias formas:\n\n' +
-      '• Touchdown: 6 puntos. Cuando un jugador entra a la zona de anotación con el balón o lo recibe dentro.\n' +
-      '• Punto extra: 1 punto, pateando el balón entre los postes justo después de un touchdown.\n' +
-      '• Conversión de 2 puntos: en lugar de patear, el equipo intenta una jugada desde cerca de la zona de anotación. Si entra, suma 2 puntos.\n' +
-      '• Gol de campo (field goal): 3 puntos, pateando el balón entre los postes en una jugada normal.\n' +
-      '• Safety: 2 puntos para la defensa, cuando la ofensiva es detenida con el balón dentro de su propia zona de anotación.'
+      'En la NFL se pueden anotar puntos de varias formas: un touchdown vale 6 puntos y se consigue llevando el balón a la zona de anotación rival o atrapándolo dentro de ella. ' +
+      'Después de un touchdown, el equipo puede patear un punto extra (1 punto) o intentar una conversión de dos puntos desde la yarda 2. ' +
+      'Un gol de campo (field goal) vale 3 puntos y se logra pateando el balón entre los postes. ' +
+      'Un safety vale 2 puntos y ocurre cuando la defensa derriba al rival con el balón dentro de su propia zona de anotación.'
   },
   {
     id: 'conversion',
-    patterns: [/conversion/i, /conversi[oó]n de dos/i, /punto extra/i],
+    patterns: [
+      /conversión de dos puntos/i,
+      /conversión de 2 puntos/i,
+      /intento de dos puntos/i,
+      /punto extra/i
+    ],
     answer:
-      'Después de un touchdown, el equipo tiene una jugada especial de conversión:\n\n' +
-      '• Si patea entre los postes (intento de punto extra), suma 1 punto.\n' +
-      '• Si en lugar de patear hace una jugada ofensiva y logra entrar de nuevo a la zona de anotación, suma 2 puntos (conversión de 2 puntos).\n\n' +
-      'El equipo elige si arriesgarse a ir por 2 puntos o asegurar casi siempre el punto extra de 1 punto.'
+      'Después de un touchdown, el equipo anotador puede elegir entre patear un punto extra (1 punto) o intentar una conversión de dos puntos. ' +
+      'En la conversión de dos puntos, la ofensiva tiene una sola jugada desde la línea cercana a la zona de anotación (generalmente la yarda 2) para volver a entrar con el balón a la end zone. ' +
+      'Si lo logra, obtiene 2 puntos adicionales; si falla, no suma puntos extra.'
   },
   {
     id: 'primero_y_diez',
-    patterns: [/primero y diez/i, /primera y diez/i, /1ero y 10/i],
+    patterns: [
+      /primero y diez/i,
+      /1ro y 10/i,
+      /primer down/i,
+      /primer y diez/i
+    ],
     answer:
-      '“Primero y diez” significa que la ofensiva tiene una nueva serie de 4 intentos para avanzar al menos 10 yardas.\n\n' +
-      '• Si en esos 4 downs avanzan 10 yardas o más, consiguen otro “primero y diez”.\n' +
-      '• Si no lo logran, normalmente el balón pasa al equipo rival.\n\n' +
-      'Esta mecánica de downs y yardas es la base del avance en el fútbol americano.'
+      'El concepto de primero y diez en la NFL indica que la ofensiva tiene cuatro intentos (downs) para avanzar al menos 10 yardas desde el punto de inicio de la serie. ' +
+      'Si en esos cuatro intentos avanza las 10 yardas o más, se le concede un nuevo primero y diez y la cuenta de downs se reinicia. ' +
+      'Si no logra avanzar lo suficiente, normalmente entrega el balón al otro equipo, ya sea por despeje (punt) o porque se quedó corto en cuarto down.'
   },
   {
     id: 'holding',
-    patterns: [/holding/i, /sujetar/i, /sujetand[oa]/i],
+    patterns: [
+      /holding/i,
+      /sujeci[oó]n/i,
+      /agarrar la camiseta/i
+    ],
     answer:
-      'El holding es un castigo por sujetar ilegalmente a un rival:\n\n' +
-      '• Holding ofensivo: un jugador ofensivo agarra o jala a un defensor de forma ilegal para impedirle llegar a la jugada. Suele castigarse con 10 yardas.\n' +
-      '• Holding defensivo: un defensor sujeta a un receptor u ofensivo para limitar su movimiento. Suele castigarse con 5 yardas y primer down automático para la ofensiva.'
+      'El holding es un castigo que ocurre cuando un jugador sujeta ilegalmente a un oponente para impedirle avanzar. ' +
+      'En la ofensiva, suele marcarse cuando un liniero ofensivo agarra o jala a un defensor fuera de las zonas permitidas, lo que normalmente implica una penalización de 10 yardas desde el punto de la falta. ' +
+      'En la defensa, también puede sancionarse si se impide de forma ilegal el movimiento de un jugador elegible para recibir pase.'
   },
   {
     id: 'offside_false_start',
-    patterns: [/offside/i, /fuera de lugar/i, /salida en falso/i, /false start/i],
+    patterns: [
+      /offside/i,
+      /fuera de lugar/i,
+      /salida en falso/i,
+      /false start/i
+    ],
     answer:
-      'Son castigos relacionados con el inicio de la jugada:\n\n' +
-      '• Offside: un defensor cruza la línea de golpeo antes del snap (cuando el balón se pone en movimiento). Normalmente son 5 yardas de castigo contra la defensa.\n' +
-      '• Salida en falso (false start): un ofensivo se mueve de forma ilegal antes del snap. Son 5 yardas de castigo contra la ofensiva.'
+      'El offside (fuera de lugar) se marca cuando un jugador defensivo cruza la línea de golpeo antes de que inicie la jugada y obtiene ventaja indebida. ' +
+      'La salida en falso (false start) se marca cuando un jugador ofensivo se mueve de forma ilegal antes del inicio de la jugada, simulando el snap. ' +
+      'Ambos castigos suelen penalizarse con 5 yardas en contra del equipo infractor.'
   },
   {
     id: 'interferencia_pase',
-    patterns: [/interferencia de pase/i, /pass interference/i],
+    patterns: [
+      /interferencia de pase/i,
+      /pass interference/i
+    ],
     answer:
-      'La interferencia de pase ocurre cuando un jugador contacta de forma ilegal a un receptor antes de que el balón llegue, impidiéndole hacer la recepción.\n\n' +
-      '• Si es interferencia defensiva, normalmente se castiga con el balón para la ofensiva en el punto de la falta y un nuevo primero y diez.\n' +
-      '• Si es interferencia ofensiva, se suele castigar con yardas en contra del equipo que estaba atacando.'
+      'La interferencia de pase ocurre cuando un jugador impide de manera ilegal que un receptor tenga la oportunidad de atrapar un pase. ' +
+      'En la interferencia defensiva, se sanciona a la defensa por sujetar, empujar o cubrir al receptor antes de que el balón llegue, y generalmente la penalización lleva el balón al lugar de la falta y concede primero y diez automático. ' +
+      'La interferencia ofensiva se marca cuando el receptor u otro jugador ofensivo empuja o bloquea ilegalmente al defensivo para crear una ventaja, y suele penalizarse con 10 yardas contra la ofensiva.'
+  },
+  {
+    id: 'tiempos_fuera',
+    patterns: [
+      /tiempos? fuera/i,
+      /timeout/i
+    ],
+    answer:
+      'Cada equipo en la NFL dispone de tres tiempos fuera por mitad para detener el reloj y reagruparse. ' +
+      'Los tiempos fuera se usan para administrar el reloj de juego, cambiar la estrategia o evitar penalizaciones por retraso de juego. ' +
+      'Una vez usados los tres tiempos fuera en esa mitad, el equipo ya no puede detener el reloj de esta forma hasta la siguiente mitad.'
+  },
+  {
+    id: 'duracion_partido',
+    patterns: [
+      /cuánto dura un partido/i,
+      /duración del partido/i,
+      /cuartos de la nfl/i
+    ],
+    answer:
+      'Un partido de la NFL se divide en cuatro cuartos de 15 minutos cada uno, con un descanso m\'as largo en el medio tiempo (entre el segundo y el tercer cuarto). ' +
+      'El reloj se detiene en diversas situaciones, como pases incompletos, jugadas que terminan fuera del campo, castigos y tiempos fuera. ' +
+      'Por eso, la duraci\'on real de un partido suele rondar entre dos y tres horas.'
+  },
+  {
+    id: 'playoffs_superbowl',
+    patterns: [
+      /playoffs/i,
+      /postemporada/i,
+      /super bowl/i,
+      /superbowl/i
+    ],
+    answer:
+      'Los playoffs de la NFL son la fase de postemporada donde los mejores equipos de cada conferencia compiten en formato de eliminación directa. ' +
+      'Los ganadores de la Conferencia Americana (AFC) y la Conferencia Nacional (NFC) se enfrentan en el Super Bowl, que es el partido final por el campeonato. ' +
+      'El Super Bowl es uno de los eventos deportivos y medi\'aticos m\'as importantes del mundo.'
   }
 ];
 
-function matchQuickNFLRule(message) {
-  const text = message.toLowerCase();
+function matchQuickNFLRule(messageLower) {
   for (const rule of quickRules) {
-    const match = rule.patterns.some((p) => p.test(text));
-    if (match) return rule.answer;
+    if (rule.patterns.some((re) => re.test(messageLower))) {
+      return rule.answer;
+    }
   }
   return null;
 }
 
-// -------------------- SerpAPI: búsqueda web (primer resultado) --------------------
-
-async function searchWeb(query) {
-  const apiKey = process.env.SERPAPI_KEY;
-  if (!apiKey) {
-    console.warn('SERPAPI_KEY no configurada, no se hará búsqueda web.');
+// ==============================
+// Helper: construir respuesta de SerpAPI (200–400 caracteres)
+// ==============================
+function construirRespuestaSerp(organicResults = []) {
+  if (!Array.isArray(organicResults) || organicResults.length === 0) {
     return null;
   }
 
-  const url =
-    'https://serpapi.com/search.json?engine=google&hl=es&gl=us' +
-    '&q=' +
-    encodeURIComponent(query) +
-    '&api_key=' +
-    apiKey;
+  // Tomamos hasta los 3 primeros resultados para tener más texto
+  const top = organicResults.slice(0, 3);
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    const text = await response.text();
-    console.error('Error SerpAPI:', response.status, text);
+  const snippets = top
+    .map((r) => r.snippet)
+    .filter((s) => typeof s === 'string' && s.trim().length > 0);
+
+  const titles = top
+    .map((r) => r.title)
+    .filter((t) => typeof t === 'string' && t.trim().length > 0);
+
+  const mainLink =
+    (top[0] && (top[0].link || top[0].source || '')) || '';
+
+  // 1) Combinamos snippets (o títulos si no hay snippets)
+  let combined = '';
+  if (snippets.length) {
+    combined = snippets.join(' ');
+  } else if (titles.length) {
+    combined = titles.join('. ');
+  } else {
     return null;
   }
 
-  const data = await response.json();
-  const results = data.organic_results || [];
-  if (results.length === 0) return null;
+  // 2) Limpiar espacios y "..."
+  combined = combined
+    .replace(/\.{3,}/g, '')   // quitar "..."
+    .replace(/\s+/g, ' ')     // colapsar espacios
+    .trim();
 
-  const r = results[0];
+  if (!combined) return null;
 
-  return {
-    title: r.title || 'Sin título',
-    snippet: r.snippet || '',
-    source: r.displayed_url || r.link || ''
-  };
+  const original = combined;
+  let text = combined;
+
+  const MAX_LEN = 400;
+  const MIN_LEN = 200;
+
+  // 3) Si es demasiado largo, recortamos a 400 intentando cerrar en punto
+  if (text.length > MAX_LEN) {
+    text = text.slice(0, MAX_LEN);
+
+    const lastPunct = Math.max(
+      text.lastIndexOf('.'),
+      text.lastIndexOf('!'),
+      text.lastIndexOf('?')
+    );
+
+    if (lastPunct >= MIN_LEN) {
+      text = text.slice(0, lastPunct + 1);
+    }
+  }
+
+  // 4) Si quedó muy corto, pero el original era largo, extendemos un poco
+  if (text.length < MIN_LEN && original.length >= MIN_LEN) {
+    text = original.slice(0, Math.min(MAX_LEN, original.length));
+  }
+
+  // 5) Agregar link solo si cabe razonablemente
+  if (mainLink && text.length < 360) {
+    const withLink = `${text} Más detalles en: ${mainLink}`;
+    text = withLink.length <= MAX_LEN ? withLink : text;
+  }
+
+  return text;
 }
 
-// -------------------- Endpoint principal /api/chat --------------------
+// ==============================
+// Búsqueda web con SerpAPI RESTRINGIDA A NFL
+// ==============================
+async function searchWebNFL(query) {
+  if (!process.env.SERPAPI_KEY) {
+    console.warn('SERPAPI_KEY no configurada en .env');
+    return null;
+  }
 
+  // Forzamos contexto NFL en la consulta
+  const nflQuery = `NFL ${query}`;
+
+  const url =
+    `https://serpapi.com/search.json` +
+    `?q=${encodeURIComponent(nflQuery)}` +
+    `&hl=es&api_key=${process.env.SERPAPI_KEY}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error('Error HTTP en SerpAPI:', res.status, await res.text());
+      return null;
+    }
+
+    const data = await res.json();
+    const organic = data.organic_results || [];
+    if (!organic.length) return null;
+
+    const answer = construirRespuestaSerp(organic);
+    if (!answer) return null;
+
+    return { answer };
+  } catch (err) {
+    console.error('Error al llamar a SerpAPI:', err);
+    return null;
+  }
+}
+
+// ==============================
+// Endpoint principal del chatbot
+// ==============================
 app.post('/api/chat', async (req, res) => {
-  const body = req.body || {};
-  const rawMessage = (body.message || '').toString();
-  const userMessage = rawMessage.trim();
+  const rawMessage = req.body.message;
+  const userMessage = normalizeText(rawMessage);
 
-  // 1) Vacío
   if (!userMessage) {
     return res.json({
       reply:
-        'No recibí ningún texto. Escríbeme una duda sobre la NFL, el Super Bowl, jugadores o cualquier tema deportivo y te respondo.'
+        'Por favor escribe algo sobre la NFL y con gusto te respondo. ' +
+        'Por ejemplo: “¿Cómo se anotan puntos?” o “¿Qué es un primero y diez?”.'
     });
   }
 
-  const isLong = userMessage.length > 400;
-  const seemsEnglish = englishHint.test(userMessage);
-  const containsInsult = insultPatterns.some((pat) => pat.test(userMessage));
+  const lower = userMessage.toLowerCase();
 
-  let prefix = '';
-  if (isLong) {
-    prefix +=
-      'Tu mensaje es bastante largo; me centraré en la parte más importante de tu pregunta. ';
-  }
-  if (seemsEnglish) {
-    prefix += 'Parece que escribiste en inglés; responderé en español. ';
-  }
-
-  // 2) Insultos
-  if (containsInsult) {
+  // 1) Insultos
+  if (containsInsult(lower)) {
     return res.json({
       reply:
-        'Entiendo que puedes estar molesto, pero mantengamos el respeto. ' +
-        'Si quieres, pregúntame sobre la NFL o fútbol americano y con gusto te explico.'
+        'Entiendo que puedas estar molesto, pero mantengamos el respeto. ' +
+        'Puedo ayudarte con reglas, equipos, campeonatos y datos curiosos de la NFL si quieres.'
     });
   }
 
-  // 3) Saludos
-  if (isGreeting(userMessage)) {
+  // 2) Saludos
+  if (isGreeting(lower)) {
     return res.json({
-      reply: randomItem(greetingReplies)
+      reply:
+        'Hola, ¿sobre qué aspecto de la NFL te gustaría saber? ' +
+        'Puedo explicarte reglas de juego, equipos, Super Bowl o campeonatos.'
     });
   }
 
-  // 4) Clasificar tema y ver si es NFL para los fallbacks
-  const topic = classifyTopic(userMessage);
+  // 3) Clasificar tema: NFL o no NFL
+  const topic = classifyTopic(lower);
 
-  // 5) Intentar primero reglas básicas internas
-  const ruleAnswer = matchQuickNFLRule(userMessage);
+  if (topic !== 'nfl') {
+    // NO se usa SerpAPI para temas fuera de NFL
+    return res.json({
+      reply:
+        'Por ahora solo puedo responder preguntas relacionadas con la NFL y el fútbol americano profesional. ' +
+        'Intenta preguntarme sobre reglas de juego, equipos, Super Bowl o campeonatos.'
+    });
+  }
+
+  // 4) Intentar responder con reglas internas rápidas
+  const ruleAnswer = matchQuickNFLRule(lower);
   if (ruleAnswer) {
-    return res.json({
-      reply: prefix + ruleAnswer
-    });
+    return res.json({ reply: ruleAnswer });
   }
 
-  // 6) Si no hay regla interna, usar SerpAPI
-  let webResult = null;
+  // 5) Si no hay regla interna, usamos SerpAPI CON CONTEXTO NFL
   try {
-    webResult = await searchWeb(userMessage);
+    const serpResult = await searchWebNFL(userMessage);
+    if (serpResult && serpResult.answer) {
+      // Ya viene con longitud aproximada 200–400 caracteres
+      return res.json({ reply: serpResult.answer });
+    }
   } catch (err) {
-    console.error('Error al buscar en la web (SerpAPI):', err.message);
+    console.error('Error en búsqueda NFL + SerpAPI:', err);
   }
 
-  if (webResult) {
-    const { title, snippet, source } = webResult;
-
-    let reply = prefix;
-
-    if (snippet) {
-      // Mostramos el snippet tal cual, sin decir "según internet"
-      reply += snippet;
-    } else {
-      // Si no hay snippet, usamos el título.
-      reply += `La referencia más clara que encontré es: "${title}".`;
-    }
-
-    if (source) {
-      reply += `\n\nMás detalles en: ${source}`;
-    }
-
-    return res.json({ reply });
-  }
-
-  // 7) Fallback si SerpAPI tampoco ayuda
-  if (topic === 'nfl') {
-    return res.json({
-      reply:
-        prefix +
-        randomItem(nflFallbackReplies) +
-        '\n\nPuedes reformular la pregunta o enfocarla en reglas, equipos o campeonatos.'
-    });
-  }
-
+  // 6) Fallback si nada funcionó
   return res.json({
     reply:
-      prefix +
-      randomItem(offTopicReplies) +
-      '\n\nSi quieres, también puedes preguntarme algo de la NFL.'
+      'No encontré una respuesta exacta para esa pregunta, pero si quieres puedo explicarte reglas básicas como ' +
+      'cómo se anotan puntos, qué es un primero y diez o cuáles son los castigos más comunes en la NFL.'
   });
 });
 
-// -------------------- Iniciar servidor --------------------
-
+// ==============================
+// Arranque del servidor
+// ==============================
 app.listen(PORT, () => {
-  console.log('Servidor NFL Chatbot (reglas básicas + SerpAPI) en puerto', PORT);
+  console.log(`Servidor NFL chatbot escuchando en http://localhost:${PORT}`);
 });
